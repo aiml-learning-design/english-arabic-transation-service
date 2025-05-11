@@ -1,43 +1,81 @@
-import gradio as gr
+import base64
+import streamlit as st
 from translator_marian import translate
 from test_to_speech import generate_audio
 import logging
+from io import BytesIO
+
+# Configure app
+st.set_page_config(
+    page_title="EN->AR Translator",
+    layout="wide"
+)
+
+st.title("English → Arabic Translator")
+st.caption("Powered by Google MarianMT")
 
 
 def process_text(text):
     try:
         arabic_text = translate(text)
         arabic_text = arabic_text.replace("<pad>", "").replace("</s>", "").strip()
-        audio_base64 = generate_audio(arabic_text)
-        return arabic_text, audio_base64 if audio_base64 else None
+        return arabic_text, generate_audio(arabic_text)
     except Exception as ex:
         logging.error(f"Processing error: {str(ex)}")
         return str(ex), None
 
 
-with gr.Blocks(title="EN->AR Translator {Gemini}") as app:
-    gr.Markdown("# English -> Arabic Translator (Gemini)")
-    gr.Markdown("Powered by Google Gemini + RAG")
+# Layout
+col1, col2 = st.columns(2)
 
-    with gr.Row():
-        with gr.Column():
-            english_input = gr.Textbox(label="English Text", placeholder="Type here...")
-            translate_btn = gr.Button("Translate & Speak")
+with col1:
+    english_input = st.text_area(
+        "English Text",
+        placeholder="Type here...",
+        height=150
+    )
+    translate_btn = st.button("Translate & Speak")
 
-        with gr.Column():
-            arabic_output = gr.Textbox(label="Arabic Translation", interactive=False)
-            audio_output = gr.Audio(label="Pronunciation", visible=True)
+with col2:
+    # Initialize output areas
+    translation_display = st.empty()
+    audio_display = st.empty()
 
-    translate_btn.click(
-        fn=process_text,
-        inputs=english_input,
-        outputs=[arabic_output, audio_output]
+    # Default state
+    translation_display.text_area(
+        "Arabic Translation",
+        value="",
+        height=150,
+        disabled=True
     )
 
-if __name__ == '__main__':
-    app.launch(
-        server_port=8670,
-        share=False,  # Disable share link creation
-        show_error=True,
-        server_name="0.0.0.0"  # Allow all network access
-    )
+    # Process on button click
+    if translate_btn:
+        if english_input.strip():
+            with st.spinner("Translating..."):
+                arabic_text, audio_data = process_text(english_input)
+
+                # Update translation
+                translation_display.text_area(
+                    "Arabic Translation",
+                    value=arabic_text,
+                    height=150,
+                    disabled=True
+                )
+
+                # Update audio if available
+                if audio_data:
+                    try:
+                        if isinstance(audio_data, str):  # Handle file path
+                            with open(audio_data, "rb") as f:
+                                audio_bytes = f.read()
+                            audio_display.audio(audio_bytes, format='audio/mp3')
+                        else:  # Handle base64
+                            audio_bytes = base64.b64decode(audio_data.split(",")[1])
+                            audio_display.audio(BytesIO(audio_bytes), format='audio/wav')
+                    except Exception as e:
+                        st.error(f"Audio error: {str(e)}")
+                else:
+                    audio_display.warning("No audio generated")
+        else:
+            st.warning("Please enter text to translate")

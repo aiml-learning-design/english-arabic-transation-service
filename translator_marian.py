@@ -1,6 +1,3 @@
-from langchain.chains import RetrievalQA
-from dotenv import load_dotenv
-import os
 from transformers import MarianMTModel, MarianTokenizer
 import torch
 import logging
@@ -9,12 +6,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger.info(f"Using device: {device}")
-
-load_dotenv("config.env")
-google_api_key = os.getenv("GOOGLE_API_KEY")
 
 try:
     model_name = "Helsinki-NLP/opus-mt-en-ar"
