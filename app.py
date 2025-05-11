@@ -12,8 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("English → Arabic Translator")
-st.caption("Powered by Google MarianMT")
+st.title(" English → Arabic Translator 🌐🈳")
 
 
 def process_text(text):
@@ -35,7 +34,7 @@ with col1:
         placeholder="Type here...",
         height=150
     )
-    translate_btn = st.button("Translate & Speak")
+    translate_btn = st.button("Translate & Pronounce")
 
 with col2:
     # Initialize output areas
