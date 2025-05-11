@@ -5,6 +5,7 @@ from test_to_speech import generate_audio
 import logging
 from io import BytesIO
 
+
 # Configure app
 st.set_page_config(
     page_title="EN->AR Translator",
