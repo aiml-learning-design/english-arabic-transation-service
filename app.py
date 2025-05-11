@@ -32,7 +32,8 @@ with col1:
     english_input = st.text_area(
         "English Text",
         placeholder="Type here...",
-        height=150
+        height=150,
+        key="english_input"
     )
     translate_btn = st.button("Translate & Pronounce")
 
@@ -46,7 +47,8 @@ with col2:
         "Arabic Translation",
         value="",
         height=150,
-        disabled=True
+        disabled=True,
+        key="arabic_translation_default"
     )
 
     # Process on button click
@@ -60,7 +62,8 @@ with col2:
                     "Arabic Translation",
                     value=arabic_text,
                     height=150,
-                    disabled=True
+                    disabled=True,
+                    key="arabic_translation_result"
                 )
 
                 # Update audio if available
