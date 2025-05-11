@@ -92,3 +92,18 @@ __pycache__/
 
 # System files
 .DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Environment files
+config.env
+*.env
+
+# Temporary files
+temp_audio_*.mp3
