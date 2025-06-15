@@ -82,3 +82,26 @@ with col2:
                     audio_display.warning("No audio generated")
         else:
             st.warning("Please enter text to translate")
+
+st.markdown(
+    """
+    <style>
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        text-align: center;
+        padding: 5px;
+        font-size: 0.8em;
+        color: #6c757d;  /* Gray for subtlety */
+        background-color: rgba(255, 255, 255, 0.5);  /* Semi-transparent white */
+        border-top: 1px solid #e9ecef;  /* Thin border */
+    }
+    </style>
+    <div class="footer">
+        Developed by <strong>DHEERAJ KUMAR</strong>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
