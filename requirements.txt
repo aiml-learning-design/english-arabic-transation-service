@@ -6,3 +6,4 @@ sentencepiece
 protobuf!=4.23.0
 protobuf
 watchdog
+gradio
