@@ -16,3 +16,4 @@ python-docx                    # For DOCX files
 beautifulsoup4                 # For HTML parsing
 pytest                         # For running your tests
 langchain-community>=0.0.20
+langchain-unstructured
