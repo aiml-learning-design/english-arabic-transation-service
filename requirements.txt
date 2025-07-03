@@ -7,4 +7,11 @@ protobuf!=4.23.0
 protobuf
 watchdog
 gradio
-langchain_core.documents
+langchain-core>=0.1.0          # For langchain_core.documents
+langchain>=0.1.0               # Optional: if using full LangChain features
+unstructured[pdf]>=0.12.0      # Required for PDF loading via Unstructured
+pdf2image                      # Used internally by Unstructured for PDFs
+pytesseract                    # OCR support if your PDF/documents require it
+python-docx                    # For DOCX files
+beautifulsoup4                 # For HTML parsing
+pytest                         # For running your tests
