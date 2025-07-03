@@ -1,107 +1,160 @@
-import base64
-import streamlit as st
+import os
+import tempfile
+from typing import List
+
+import gradio as gr
+from langchain_core.documents import Document
+
 from translator_marian import translate
 from test_to_speech import generate_audio
+import streamlit as st
 import logging
-from io import BytesIO
+
+from universal_loader import UniversalDocumentLoader
 
 
-# Configure app
-st.set_page_config(
-    page_title="EN->AR Translator",
-    layout="wide"
-)
-
-st.title(" English → Arabic Translator 🌐🈳")
+def extract_text_from_file(file_path: str) -> str:
+    try:
+        loader = UniversalDocumentLoader(file_path)
+        documents: List[Document] = loader.load()
+        return "\n\n".join([doc.page_content for doc in documents])
+    except Exception as ex:
+        logging.error(f"Error loading file: {str(ex)}")
+        return f"Error extracting text: {str(ex)}"
 
 
 def process_text(text):
     try:
         arabic_text = translate(text)
         arabic_text = arabic_text.replace("<pad>", "").replace("</s>", "").strip()
-        return arabic_text, generate_audio(arabic_text)
+        audio_base64 = generate_audio(arabic_text)
+        return arabic_text, audio_base64 if audio_base64 else None
     except Exception as ex:
         logging.error(f"Processing error: {str(ex)}")
         return str(ex), None
 
 
-# Layout
-col1, col2 = st.columns(2)
+with gr.Blocks(title="EN->AR Translator {Gemini}") as app:
+    gr.Markdown("# English -> Arabic Translator (Gemini)")
+    gr.Markdown("Powered by Google Gemini + RAG")
 
-with col1:
-    english_input = st.text_area(
-        "English Text",
-        placeholder="Type here...",
-        height=150,
-        key="english_input"
-    )
-    translate_btn = st.button("Translate & Pronounce")
+    with gr.Row():
+        with gr.Column():
+            english_input = gr.Textbox(label="English Text", placeholder="Type here...")
+            translate_btn = gr.Button("Translate & Speak")
 
-with col2:
-    # Initialize output areas
-    translation_display = st.empty()
-    audio_display = st.empty()
+        with gr.Column():
+            arabic_output = gr.Textbox(label="Arabic Translation", interactive=False)
+            audio_output = gr.Audio(label="Pronunciation", visible=True)
 
-    # Default state
-    translation_display.text_area(
-        "Arabic Translation",
-        value="",
-        height=150,
-        disabled=True,
-        key="arabic_translation_default"
+    translate_btn.click(
+        fn=process_text,
+        inputs=english_input,
+        outputs=[arabic_output, audio_output]
     )
 
-    # Process on button click
-    if translate_btn:
-        if english_input.strip():
-            with st.spinner("Translating..."):
-                arabic_text, audio_data = process_text(english_input)
 
-                # Update translation
-                translation_display.text_area(
-                    "Arabic Translation",
-                    value=arabic_text,
-                    height=150,
-                    disabled=True,
-                    key="arabic_translation_result"
-                )
+def main():
+    st.set_page_config(
+        page_title="EN->AR Document Translator",
+        page_icon="🌍",
+        layout="wide"
+    )
 
-                # Update audio if available
-                if audio_data:
+    st.title("🌍 English to Arabic Document Translator")
+    st.markdown("""
+    Upload any document (PDF, Word, etc.) or enter text manually to translate to Arabic.
+    """)
+
+    # Initialize session state
+    if 'extracted_text' not in st.session_state:
+        st.session_state.extracted_text = ""
+    if 'translated_text' not in st.session_state:
+        st.session_state.translated_text = ""
+    if 'audio_file' not in st.session_state:
+        st.session_state.audio_file = None
+
+    # Create two columns
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Input")
+
+        # File uploader
+        uploaded_file = st.file_uploader(
+            "Upload a document",
+            type=["pdf", "docx", "doc", "txt", "rtf", "html", "pptx", "ppt", "csv"],
+            accept_multiple_files=False
+        )
+
+        # Manual text input
+        english_text = st.text_area(
+            "Or enter English text directly",
+            height=200,
+            value=st.session_state.extracted_text
+        )
+
+        # Process buttons
+        process_col1, process_col2 = st.columns(2)
+        with process_col1:
+            if st.button("Extract Text", disabled=not uploaded_file):
+                with st.spinner("Extracting text from document..."):
+                    # Save uploaded file to temp location
+                    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                        tmp_file.write(uploaded_file.getvalue())
+                        tmp_path = tmp_file.name
+
                     try:
-                        if isinstance(audio_data, str):  # Handle file path
-                            with open(audio_data, "rb") as f:
-                                audio_bytes = f.read()
-                            audio_display.audio(audio_bytes, format='audio/mp3')
-                        else:  # Handle base64
-                            audio_bytes = base64.b64decode(audio_data.split(",")[1])
-                            audio_display.audio(BytesIO(audio_bytes), format='audio/wav')
-                    except Exception as e:
-                        st.error(f"Audio error: {str(e)}")
-                else:
-                    audio_display.warning("No audio generated")
-        else:
-            st.warning("Please enter text to translate")
+                        extracted = extract_text_from_file(tmp_path)
+                        st.session_state.extracted_text = extracted
+                        english_text = extracted  # Update the text area
+                    finally:
+                        os.unlink(tmp_path)  # Clean up temp file
 
-st.markdown(
-    """
-    <style>
-    .footer {
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        text-align: center;
-        padding: 5px;
-        font-size: 0.8em;
-        color: #6c757d;  /* Gray for subtlety */
-        background-color: rgba(255, 255, 255, 0.5);  /* Semi-transparent white */
-        border-top: 1px solid #e9ecef;  /* Thin border */
-    }
-    </style>
-    <div class="footer">
-        Developed by <strong>DHEERAJ KUMAR</strong>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+        with process_col2:
+            translate_btn = st.button(
+                "Translate to Arabic",
+                disabled=not (english_text or st.session_state.extracted_text)
+            )
+
+    with col2:
+        st.subheader("Output")
+
+        # Display extracted text (editable)
+        if st.session_state.extracted_text:
+            st.text_area(
+                "Extracted English Text",
+                value=st.session_state.extracted_text,
+                height=200,
+                key="extracted_display"
+            )
+
+        # Display translation
+        if st.session_state.translated_text:
+            st.text_area(
+                "Arabic Translation",
+                value=st.session_state.translated_text,
+                height=200,
+                key="translated_display"
+            )
+
+            # Audio playback
+            if st.session_state.audio_file:
+                st.audio(st.session_state.audio_file, format="audio/mp3")
+
+    # Handle translation
+    if translate_btn and (english_text or st.session_state.extracted_text):
+        text_to_translate = english_text if english_text else st.session_state.extracted_text
+
+        with st.spinner("Translating to Arabic..."):
+            translated_text, audio_data = process_text(text_to_translate)
+
+            st.session_state.translated_text = translated_text
+            st.session_state.audio_file = audio_data
+
+            # Rerun to update the UI
+            st.rerun()
+
+
+if __name__ == "__main__":
+    main()
